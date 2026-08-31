@@ -35,6 +35,10 @@
 
 .artefact-due-card.group { font-weight: 600; }
 
+/* Anki-due chip: always cyan, always sits above that day's artefact
+   cards (computeDesiredCards slots it in first). */
+.artefact-due-card.anki { background: #006064; }
+
 .artefact-due-dot { font-size: 8px; line-height: 1; flex: none; }
 
 .artefact-due-title {

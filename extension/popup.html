@@ -14,9 +14,18 @@
   </div>
   <div id="meta" class="meta"></div>
 
+  <div class="status-row">
+    <span id="anki-status-dot" class="dot"></span>
+    <span id="anki-status-text">Checking…</span>
+  </div>
+  <div id="anki-meta" class="meta"></div>
+
   <div class="settings">
     <label>Plugin port
       <input id="port-input" type="number" min="1" max="65535">
+    </label>
+    <label>Anki API key (leave blank if AnkiConnect has none set)
+      <input id="anki-key-input" type="text" placeholder="AnkiConnect API key">
     </label>
     <button id="save-btn">Save</button>
     <button id="poll-btn">Poll now</button>
@@ -27,7 +36,7 @@
   <h2>Upcoming</h2>
   <ul id="upcoming"></ul>
 
-  <p class="footnote">Reads from the Learning Artefact Tracker Obsidian plugin only — no Google account access. Obsidian must be open with that plugin enabled. See the companion repo's README.</p>
+  <p class="footnote">Reads from the Learning Artefact Tracker Obsidian plugin, and from AnkiConnect if Anki is open — no Google account access. See the companion repo's README.</p>
 
 <script src="popup.js"></script>
 </body>

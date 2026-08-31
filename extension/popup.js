@@ -9,7 +9,11 @@ function fmtAgo(ts) {
 }
 
 async function refresh() {
-  const data = await chrome.storage.local.get(['artefacts', 'serverOk', 'lastPolled', 'lastError', 'root', 'settings']);
+  const data = await chrome.storage.local.get([
+    'artefacts', 'serverOk', 'lastPolled', 'lastError', 'root', 'settings',
+    'ankiDecks', 'ankiTotal', 'ankiOk', 'ankiLastPolled', 'ankiLastError',
+  ]);
+
   const dot = $('status-dot');
   const text = $('status-text');
   if (data.serverOk) {
@@ -25,8 +29,24 @@ async function refresh() {
   $('meta').textContent = `${(data.artefacts || []).length} due artefact(s) · last polled ${fmtAgo(data.lastPolled)}` +
     (data.root ? ` · vault: ${data.root}` : '');
 
+  const ankiDot = $('anki-status-dot');
+  const ankiText = $('anki-status-text');
+  if (data.ankiOk) {
+    ankiDot.className = 'dot ok';
+    ankiText.textContent = 'AnkiConnect reachable';
+  } else if (data.ankiOk === false) {
+    ankiDot.className = 'dot bad';
+    ankiText.textContent = data.ankiLastError ? `Unreachable: ${data.ankiLastError}` : 'Unreachable';
+  } else {
+    ankiDot.className = 'dot';
+    ankiText.textContent = 'Not polled yet';
+  }
+  $('anki-meta').textContent = `${data.ankiTotal || 0} card(s) due today · last polled ${fmtAgo(data.ankiLastPolled)}` +
+    ` · "Archive" deck always ignored`;
+
   const port = (data.settings && data.settings.port) || 8756;
   $('port-input').value = port;
+  $('anki-key-input').value = (data.settings && data.settings.ankiApiKey) || '';
 
   const upcoming = $('upcoming');
   upcoming.innerHTML = '';
@@ -51,7 +71,8 @@ async function refresh() {
 
 $('save-btn').addEventListener('click', () => {
   const port = parseInt($('port-input').value, 10) || 8756;
-  chrome.runtime.sendMessage({ type: 'update-settings', settings: { port } }, () => refresh());
+  const ankiApiKey = $('anki-key-input').value.trim();
+  chrome.runtime.sendMessage({ type: 'update-settings', settings: { port, ankiApiKey } }, () => refresh());
 });
 
 $('poll-btn').addEventListener('click', () => {

@@ -1,4 +1,5 @@
-// Renders due-artefact chips on Google Calendar's day columns.
+// Renders due-artefact chips (and an Anki-due chip) on Google Calendar's
+// day columns.
 //
 // This is a *visual overlay only* -- it does not read, create, or modify
 // any real Google Calendar event. Chips are positioned in fixed screen
@@ -27,26 +28,32 @@
   const MAX_PINNED_ROW_HEIGHT = 40; // compact all-day/task rows vs tall hour rows
 
   let artefacts = [];
+  let ankiDecks = [];
+  let ankiTotal = 0;
   let debugMode = false;
 
   function isoDate(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  // ---- reading artefact data ----
+  // ---- reading artefact + Anki data ----
 
   function loadFromStorage() {
-    chrome.storage.local.get(['artefacts'], (res) => {
+    chrome.storage.local.get(['artefacts', 'ankiDecks', 'ankiTotal'], (res) => {
       artefacts = res.artefacts || [];
+      ankiDecks = res.ankiDecks || [];
+      ankiTotal = res.ankiTotal || 0;
       scheduleRender();
     });
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes.artefacts) {
-      artefacts = changes.artefacts.newValue || [];
-      scheduleRender();
-    }
+    if (area !== 'local') return;
+    let dirty = false;
+    if (changes.artefacts) { artefacts = changes.artefacts.newValue || []; dirty = true; }
+    if (changes.ankiDecks) { ankiDecks = changes.ankiDecks.newValue || []; dirty = true; }
+    if (changes.ankiTotal) { ankiTotal = changes.ankiTotal.newValue || 0; dirty = true; }
+    if (dirty) scheduleRender();
   });
 
   // ---- finding calendar day columns ----
@@ -173,7 +180,7 @@
 
   // ---- detail popover (single artefact) ----
 
-  let openPopover = null; // either the single-detail box or the list dialog
+  let openPopover = null; // the single-detail box, or a list dialog
   function closePopover() {
     if (openPopover) { openPopover.remove(); openPopover = null; }
   }
@@ -233,7 +240,7 @@
     openPopover = box;
   }
 
-  // ---- scrollable list dialog (grouped card) ----
+  // ---- scrollable list dialog (grouped artefact card) ----
 
   function showList(groupLabel, items, anchorEl) {
     closePopover();
@@ -255,6 +262,40 @@
       const caption = document.createElement('div');
       caption.className = 'artefact-due-list-caption';
       caption.textContent = [a.dueDate, a.course].filter(Boolean).join(' · ');
+      row.appendChild(caption);
+      list.appendChild(row);
+    }
+    box.appendChild(list);
+
+    document.body.appendChild(box);
+    openPopover = box;
+  }
+
+  // ---- scrollable list dialog (Anki per-deck breakdown) ----
+
+  function showAnkiList(label, decks, anchorEl) {
+    closePopover();
+    const box = document.createElement('div');
+    box.className = 'artefact-due-list-dialog';
+    positionBelow(box, anchorEl);
+
+    const heading = document.createElement('div');
+    heading.className = 'artefact-due-list-heading';
+    heading.textContent = label;
+    box.appendChild(heading);
+
+    const list = document.createElement('div');
+    list.className = 'artefact-due-list-scroll';
+    for (const d of decks) {
+      const row = document.createElement('div');
+      row.className = 'artefact-due-list-row';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'artefact-due-detail-title';
+      nameEl.textContent = d.name;
+      const caption = document.createElement('div');
+      caption.className = 'artefact-due-list-caption';
+      caption.textContent = `${d.due} due`;
+      row.appendChild(nameEl);
       row.appendChild(caption);
       list.appendChild(row);
     }
@@ -292,11 +333,26 @@
     return { label, isOverdue: kind === 'overdue', items, isGroup: true };
   }
 
+  function describeAnki(total, decks) {
+    return {
+      label: `${total} Anki Card${total === 1 ? '' : 's'} Due`,
+      isOverdue: false,
+      isAnki: true,
+      items: decks,
+      isGroup: true,
+    };
+  }
+
   // Computes the full desired set of cards for the current layout as a
   // Map<cardKey, descriptor>. cardKey identifies WHERE a card belongs
-  // (date + overdue/due), independent of its content, so the diff step
-  // can tell "same slot, different content" (update in place) apart
-  // from "slot no longer needed" (remove) or "new slot" (create).
+  // (date + kind), independent of its content, so the diff step can tell
+  // "same slot, different content" (update in place) apart from "slot no
+  // longer needed" (remove) or "new slot" (create).
+  //
+  // The Anki chip is special: it isn't a per-day due date like an
+  // artefact, it's "how many Anki cards are due right now", so it only
+  // ever occupies today's column -- and when it's shown, it's slotted in
+  // first so it renders above (not below) that day's artefact cards.
   function computeDesiredCards(columns, rowBottom, today) {
     const byDate = new Map(); // dateKey -> { overdue: [], due: [] }
     for (const a of artefacts) {
@@ -310,14 +366,18 @@
     for (const col of columns) {
       const dateKey = isoDate(col.date);
       const bucket = byDate.get(dateKey);
-      if (!bucket) continue;
+      const showAnki = dateKey === today && ankiTotal > 0;
+      if (!bucket && !showAnki) continue;
 
       const groups = [];
-      if (bucket.overdue.length) groups.push(describeGroup('overdue', bucket.overdue, dateKey, today));
-      if (bucket.due.length) groups.push(describeGroup('due', bucket.due, dateKey, today));
+      if (showAnki) groups.push({ kind: 'anki', ...describeAnki(ankiTotal, ankiDecks) });
+      if (bucket) {
+        if (bucket.overdue.length) groups.push({ kind: 'overdue', ...describeGroup('overdue', bucket.overdue, dateKey, today) });
+        if (bucket.due.length) groups.push({ kind: 'due', ...describeGroup('due', bucket.due, dateKey, today) });
+      }
 
       groups.forEach((g, i) => {
-        const key = `${dateKey}|${g.isOverdue ? 'overdue' : 'due'}`;
+        const key = `${dateKey}|${g.kind}`;
         desired.set(key, {
           left: Math.round(col.rect.left),
           top: Math.round(rowBottom + 3 + i * 24),
@@ -331,16 +391,22 @@
 
   function cardContentSignature(desc) {
     return JSON.stringify({
+      kind: desc.kind,
       label: desc.label,
       isGroup: desc.isGroup,
       isOverdue: desc.isOverdue,
-      ids: desc.items.map((a) => a.id || a.title),
+      ids: desc.isAnki
+        ? desc.items.map((d) => `${d.name}:${d.due}`)
+        : desc.items.map((a) => a.id || a.title),
     });
   }
 
   function buildCardElement(desc) {
     const el = document.createElement('div');
-    el.className = 'artefact-due-card' + (desc.isOverdue ? ' overdue' : '') + (desc.isGroup ? ' group' : '');
+    el.className = 'artefact-due-card'
+      + (desc.isOverdue ? ' overdue' : '')
+      + (desc.isAnki ? ' anki' : '')
+      + (desc.isGroup ? ' group' : '');
     const dot = document.createElement('span');
     dot.className = 'artefact-due-dot';
     dot.textContent = '●';
@@ -349,10 +415,13 @@
     label.textContent = desc.label;
     el.appendChild(dot);
     el.appendChild(label);
-    el.title = desc.isGroup ? `${desc.label} — click to see the list` : `${desc.label} — due ${desc.items[0].dueDate}`;
+    el.title = desc.isAnki
+      ? `${desc.label} — click to see the per-deck breakdown`
+      : (desc.isGroup ? `${desc.label} — click to see the list` : `${desc.label} — due ${desc.items[0].dueDate}`);
     el.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (desc.isGroup) showList(desc.label, desc.items, el);
+      if (desc.isAnki) showAnkiList(desc.label, desc.items, el);
+      else if (desc.isGroup) showList(desc.label, desc.items, el);
       else showDetail(desc.items[0], el);
     });
     return el;
@@ -373,7 +442,7 @@
   function render() {
     const root = ensureOverlayRoot();
 
-    if (!artefacts.length) {
+    if (!artefacts.length && !ankiTotal) {
       for (const [key, entry] of renderedCards) { entry.el.remove(); renderedCards.delete(key); }
       if (debugMode) clearDebugOutlines(root);
       return;
