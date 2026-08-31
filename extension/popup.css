@@ -1,0 +1,24 @@
+body {
+  width: 300px;
+  font: 13px/1.4 -apple-system, Roboto, Arial, sans-serif;
+  margin: 0;
+  padding: 12px 14px 14px;
+  color: #202124;
+}
+h1 { font-size: 14px; margin: 0 0 8px; }
+h2 { font-size: 12px; margin: 14px 0 4px; color: #5f6368; text-transform: uppercase; letter-spacing: .04em; }
+.status-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #999; display: inline-block; }
+.dot.ok { background: #1e8e3e; }
+.dot.bad { background: #d93025; }
+.meta { color: #5f6368; font-size: 11px; margin-bottom: 10px; }
+.settings { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.settings label { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+.settings input { width: 64px; }
+button { font: inherit; padding: 4px 8px; border-radius: 4px; border: 1px solid #dadce0; background: #f8f9fa; cursor: pointer; }
+button:hover { background: #f1f3f4; }
+button.secondary { width: 100%; margin-bottom: 4px; }
+ul#upcoming { list-style: none; margin: 0; padding: 0; max-height: 180px; overflow-y: auto; }
+ul#upcoming li { padding: 4px 0; border-bottom: 1px solid #f1f3f4; }
+ul#upcoming li .d { color: #5f6368; font-size: 11px; }
+.footnote { font-size: 10px; color: #80868b; margin-top: 10px; }

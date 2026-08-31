@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Learning Artefact Due Dates — Google Calendar",
+  "version": "1.1.0",
+  "description": "Shows Learning Artefact due dates as chips on Google Calendar, read from the companion Obsidian plugin running locally. No Google account access.",
+  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  },
+  "permissions": ["storage", "alarms", "activeTab"],
+  "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://calendar.google.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

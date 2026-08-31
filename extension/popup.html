@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Artefact Due Dates</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>Artefact Due Dates</h1>
+
+  <div class="status-row">
+    <span id="status-dot" class="dot"></span>
+    <span id="status-text">Checking…</span>
+  </div>
+  <div id="meta" class="meta"></div>
+
+  <div class="settings">
+    <label>Plugin port
+      <input id="port-input" type="number" min="1" max="65535">
+    </label>
+    <button id="save-btn">Save</button>
+    <button id="poll-btn">Poll now</button>
+  </div>
+
+  <button id="debug-btn" class="secondary">Toggle column outline on this tab</button>
+
+  <h2>Upcoming</h2>
+  <ul id="upcoming"></ul>
+
+  <p class="footnote">Reads from the Learning Artefact Tracker Obsidian plugin only — no Google account access. Obsidian must be open with that plugin enabled. See the companion repo's README.</p>
+
+<script src="popup.js"></script>
+</body>
+</html>
