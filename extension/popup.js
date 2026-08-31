@@ -75,8 +75,14 @@ $('save-btn').addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'update-settings', settings: { port, ankiApiKey } }, () => refresh());
 });
 
+// "Poll now" always polls with whatever is currently typed in the fields,
+// not just whatever was last Saved -- otherwise typing a new key and
+// clicking Poll Now (without Save) silently re-polls with the stale
+// settings and reproduces the exact same error, which is confusing.
 $('poll-btn').addEventListener('click', () => {
-  chrome.runtime.sendMessage({ type: 'poll-now' }, () => refresh());
+  const port = parseInt($('port-input').value, 10) || 8756;
+  const ankiApiKey = $('anki-key-input').value.trim();
+  chrome.runtime.sendMessage({ type: 'update-settings', settings: { port, ankiApiKey } }, () => refresh());
 });
 
 $('debug-btn').addEventListener('click', async () => {
